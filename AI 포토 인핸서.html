@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 포토 인핸서 — 최고 퀄리티 사진 편집</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --bg:#0b0d12;
+    --panel:#13161d;
+    --panel2:#1a1e28;
+    --line:#262b36;
+    --text:#edf0f5;
+    --sub:#9aa3b2;
+    --accent:#6ee7c9;
+    --accent2:#8b7bff;
+    --warn:#ff8a6b;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Pretendard','Apple SD Gothic Neo','Segoe UI',system-ui,sans-serif;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(110,231,201,0.08), transparent),
+      radial-gradient(1000px 500px at 110% 10%, rgba(139,123,255,0.10), transparent),
+      var(--bg);
+    color:var(--text);
+    min-height:100vh;
+    padding:32px 16px 80px;
+  }
+  .wrap{max-width:1180px;margin:0 auto;}
+  header{text-align:center;margin-bottom:28px;}
+  header h1{
+    font-size:28px;margin:0 0 8px;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    font-weight:800;letter-spacing:-0.5px;
+  }
+  header p{color:var(--sub);margin:0;font-size:14px;}
+
+  .dropzone{
+    border:1.5px dashed var(--line);
+    border-radius:var(--radius);
+    background:var(--panel);
+    padding:36px 20px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .2s, background .2s;
+    margin-bottom:20px;
+  }
+  .dropzone:hover, .dropzone.drag{
+    border-color:var(--accent);
+    background:var(--panel2);
+  }
+  .dropzone .big{font-size:16px;font-weight:600;margin-bottom:6px;}
+  .dropzone .small{font-size:13px;color:var(--sub);}
+  input[type=file]{display:none;}
+
+  .controls{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:20px 22px;
+    margin-bottom:24px;
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+    gap:18px;
+  }
+  .ctrl{display:flex;flex-direction:column;gap:8px;}
+  .ctrl label{font-size:12.5px;color:var(--sub);display:flex;justify-content:space-between;}
+  .ctrl label span.val{color:var(--accent);font-weight:600;}
+  input[type=range]{
+    -webkit-appearance:none;width:100%;height:4px;border-radius:2px;
+    background:var(--line);outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+    background:var(--accent);cursor:pointer;border:3px solid #0b0d12;
+  }
+  select{
+    background:var(--panel2);color:var(--text);border:1px solid var(--line);
+    border-radius:8px;padding:8px 10px;font-size:13px;
+  }
+  .toggle-row{display:flex;align-items:center;gap:8px;}
+  .toggle-row input{width:16px;height:16px;accent-color:var(--accent);}
+
+  .actions{
+    display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;
+  }
+  button{
+    border:none;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:600;
+    cursor:pointer;transition:transform .12s, opacity .12s;
+  }
+  button:active{transform:scale(0.97);}
+  .btn-primary{background:linear-gradient(90deg,var(--accent),#49d6b0);color:#06241d;}
+  .btn-secondary{background:var(--panel2);color:var(--text);border:1px solid var(--line);}
+  .btn-ghost{background:transparent;color:var(--sub);border:1px solid var(--line);}
+  button:disabled{opacity:0.4;cursor:not-allowed;}
+
+  .status{font-size:13px;color:var(--sub);margin-bottom:16px;min-height:18px;}
+
+  .grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px;
+  }
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .card .imgwrap{
+    position:relative;aspect-ratio:4/3;background:#000;
+    overflow:hidden;
+  }
+  .card .imgwrap img{width:100%;height:100%;object-fit:contain;display:block;}
+  .card .imgwrap .badge{
+    position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.6);
+    color:var(--accent);font-size:11px;padding:3px 8px;border-radius:6px;
+    font-weight:600;
+  }
+  .card .imgwrap .spinner{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,0.55);font-size:12px;color:var(--sub);
+  }
+  .card .meta{padding:12px 14px;display:flex;justify-content:space-between;align-items:center;}
+  .card .meta .name{font-size:12.5px;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;}
+  .card .meta .dl{
+    background:var(--panel2);border:1px solid var(--line);color:var(--accent);
+    font-size:12px;padding:6px 10px;border-radius:7px;cursor:pointer;
+  }
+  .compare{
+    display:flex;font-size:10.5px;color:var(--sub);justify-content:space-between;
+    padding:0 14px 10px;
+  }
+  footer{text-align:center;color:var(--sub);font-size:12px;margin-top:40px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>AI 포토 인핸서</h1>
+    <p>여러 장의 사진을 한 번에 업로드 → 화질 개선·업스케일·색감 보정 → 다운로드. 모든 처리는 이 브라우저 안에서만 이루어지며 서버로 전송되지 않습니다.</p>
+  </header>
+
+  <div class="dropzone" id="dropzone">
+    <div class="big">📷 클릭하거나 사진을 끌어다 놓으세요</div>
+    <div class="small">JPG, PNG, WEBP 등 여러 장 동시 선택 가능</div>
+    <input type="file" id="fileInput" accept="image/*" multiple>
+  </div>
+
+  <div class="controls" style="margin-bottom:12px;">
+    <div class="ctrl" style="grid-column:1/-1;">
+      <div class="toggle-row">
+        <input type="checkbox" id="autoMode" checked>
+        <span style="font-size:13.5px;font-weight:600;color:var(--text)">🤖 자동 모드 — 사진마다 밝기·대비·채도를 분석해서 최적값을 알아서 적용</span>
+      </div>
+      <span style="font-size:12px;color:var(--sub);">어두운 사진은 더 밝게, 흐릿한 사진은 대비를 더, 탁한 사진은 채도를 더 — 사진별로 다르게 자동 계산됩니다. 끄면 아래 슬라이더를 모든 사진에 동일하게 수동 적용합니다.</span>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="ctrl">
+      <label>업스케일 배율 <span class="val" id="scaleVal">2.0x</span></label>
+      <input type="range" id="scale" min="1" max="4" step="0.5" value="2">
+    </div>
+    <div class="ctrl">
+      <label>선명도(샤픈) <span class="val" id="sharpVal">60</span></label>
+      <input type="range" id="sharp" min="0" max="100" step="5" value="60">
+    </div>
+    <div class="ctrl" id="contrastCtrl">
+      <label>대비(수동) <span class="val" id="contrastVal">50</span></label>
+      <input type="range" id="contrast" min="0" max="100" step="5" value="50">
+    </div>
+    <div class="ctrl" id="satCtrl">
+      <label>채도(수동) <span class="val" id="satVal">20</span></label>
+      <input type="range" id="sat" min="-50" max="80" step="5" value="20">
+    </div>
+    <div class="ctrl" id="brightCtrl">
+      <label>밝기(수동) <span class="val" id="brightVal">5</span></label>
+      <input type="range" id="bright" min="-50" max="50" step="5" value="5">
+    </div>
+    <div class="ctrl">
+      <label>노이즈 감소</label>
+      <div class="toggle-row">
+        <input type="checkbox" id="denoise" checked>
+        <span style="font-size:12.5px;color:var(--sub)">부드럽게 처리 후 샤픈 (잡티/노이즈 완화)</span>
+      </div>
+    </div>
+    <div class="ctrl">
+      <label>출력 포맷</label>
+      <select id="format">
+        <option value="image/png">PNG (무손실)</option>
+        <option value="image/jpeg" selected>JPEG (고화질, 용량 작음)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn-primary" id="processBtn" disabled>✨ 전체 사진 최고 퀄리티로 편집</button>
+    <button class="btn-secondary" id="downloadAllBtn" disabled>⬇ 전체 ZIP으로 다운로드</button>
+    <button class="btn-ghost" id="clearBtn" disabled>초기화</button>
+  </div>
+  <div class="status" id="status"></div>
+
+  <div class="grid" id="grid"></div>
+
+  <footer>모든 이미지 처리는 서버 업로드 없이 브라우저 내부(Canvas API)에서 실행됩니다.</footer>
+</div>
+
+<script>
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const grid = document.getElementById('grid');
+const processBtn = document.getElementById('processBtn');
+const downloadAllBtn = document.getElementById('downloadAllBtn');
+const clearBtn = document.getElementById('clearBtn');
+const statusEl = document.getElementById('status');
+
+const scaleInput = document.getElementById('scale');
+const sharpInput = document.getElementById('sharp');
+const contrastInput = document.getElementById('contrast');
+const satInput = document.getElementById('sat');
+const brightInput = document.getElementById('bright');
+const denoiseInput = document.getElementById('denoise');
+const formatInput = document.getElementById('format');
+const autoModeInput = document.getElementById('autoMode');
+const manualCtrls = [document.getElementById('contrastCtrl'), document.getElementById('satCtrl'), document.getElementById('brightCtrl')];
+
+function syncAutoModeUI() {
+  const on = autoModeInput.checked;
+  manualCtrls.forEach(el => {
+    el.style.opacity = on ? 0.4 : 1;
+    el.querySelectorAll('input').forEach(inp => inp.disabled = on);
+  });
+}
+autoModeInput.addEventListener('change', syncAutoModeUI);
+syncAutoModeUI();
+
+const scaleVal = document.getElementById('scaleVal');
+const sharpVal = document.getElementById('sharpVal');
+const contrastVal = document.getElementById('contrastVal');
+const satVal = document.getElementById('satVal');
+const brightVal = document.getElementById('brightVal');
+
+scaleInput.oninput = () => scaleVal.textContent = parseFloat(scaleInput.value).toFixed(1) + 'x';
+sharpInput.oninput = () => sharpVal.textContent = sharpInput.value;
+contrastInput.oninput = () => contrastVal.textContent = contrastInput.value;
+satInput.oninput = () => satVal.textContent = satInput.value;
+brightInput.oninput = () => brightVal.textContent = brightInput.value;
+
+let items = []; // {id, file, originalURL, resultBlob, resultURL, cardEl}
+let idCounter = 0;
+
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('drag');
+  handleFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', e => handleFiles(e.target.files));
+
+function handleFiles(fileList) {
+  const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+  if (!files.length) return;
+  files.forEach(file => {
+    const id = 'img_' + (idCounter++);
+    const originalURL = URL.createObjectURL(file);
+    const card = buildCard(id, file.name, originalURL);
+    grid.appendChild(card);
+    items.push({ id, file, originalURL, resultBlob: null, resultURL: null, cardEl: card });
+  });
+  processBtn.disabled = false;
+  clearBtn.disabled = false;
+  statusEl.textContent = `${items.length}장의 사진이 준비되었습니다. "전체 사진 최고 퀄리티로 편집"을 눌러주세요.`;
+}
+
+function buildCard(id, name, originalURL) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.id = id;
+  card.innerHTML = `
+    <div class="imgwrap">
+      <img src="${originalURL}" />
+    </div>
+    <div class="compare"><span>원본</span><span class="resLabel"></span></div>
+    <div class="meta">
+      <span class="name" title="${name}">${name}</span>
+      <button class="dl" disabled>다운로드</button>
+    </div>
+  `;
+  card.querySelector('.dl').addEventListener('click', () => {
+    const item = items.find(it => it.id === id);
+    if (item && item.resultURL) downloadURL(item.resultURL, 'enhanced_' + item.file.name.replace(/\.[^.]+$/, '') + (formatInput.value === 'image/png' ? '.png' : '.jpg'));
+  });
+  return card;
+}
+
+clearBtn.addEventListener('click', () => {
+  items.forEach(it => { URL.revokeObjectURL(it.originalURL); if (it.resultURL) URL.revokeObjectURL(it.resultURL); });
+  items = [];
+  grid.innerHTML = '';
+  fileInput.value = '';
+  processBtn.disabled = true;
+  downloadAllBtn.disabled = true;
+  clearBtn.disabled = true;
+  statusEl.textContent = '';
+});
+
+processBtn.addEventListener('click', async () => {
+  processBtn.disabled = true;
+  downloadAllBtn.disabled = true;
+  const scale = parseFloat(scaleInput.value);
+  const sharpAmt = parseInt(sharpInput.value, 10) / 100;
+  const autoMode = autoModeInput.checked;
+  const manual = {
+    contrastAmt: parseInt(contrastInput.value, 10) / 100,
+    satAmt: parseInt(satInput.value, 10) / 100,
+    brightAmt: parseInt(brightInput.value, 10)
+  };
+  const denoise = denoiseInput.checked;
+  const format = formatInput.value;
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const wrap = item.cardEl.querySelector('.imgwrap');
+    let spinner = wrap.querySelector('.spinner');
+    if (!spinner) {
+      spinner = document.createElement('div');
+      spinner.className = 'spinner';
+      wrap.appendChild(spinner);
+    }
+    spinner.textContent = `처리 중... (${i+1}/${items.length})`;
+    statusEl.textContent = `✨ ${item.file.name} 편집 중... (${i+1}/${items.length})`;
+    await new Promise(r => setTimeout(r, 10)); // let UI paint
+
+    const { blob, autoParams } = await enhanceImage(item.file, { scale, sharpAmt, autoMode, manual, denoise, format });
+    item.resultBlob = blob;
+    if (item.resultURL) URL.revokeObjectURL(item.resultURL);
+    item.resultURL = URL.createObjectURL(blob);
+
+    wrap.querySelector('img').src = item.resultURL;
+    spinner.remove();
+    const badge = document.createElement('div');
+    badge.className = 'badge';
+    badge.textContent = '✓ 편집 완료';
+    wrap.appendChild(badge);
+    item.cardEl.querySelector('.resLabel').textContent = autoMode
+      ? `자동 보정 · ${scale}x (밝기${autoParams.brightAmt>=0?'+':''}${autoParams.brightAmt}, 채도${autoParams.satAmt>=0?'+':''}${Math.round(autoParams.satAmt*100)}%)`
+      : `수동 보정 · ${scale}x`;
+    item.cardEl.querySelector('.dl').disabled = false;
+  }
+
+  statusEl.textContent = `✅ 전체 ${items.length}장 편집 완료!`;
+  processBtn.disabled = false;
+  downloadAllBtn.disabled = false;
+});
+
+downloadAllBtn.addEventListener('click', async () => {
+  statusEl.textContent = 'ZIP 파일 생성 중...';
+  const zip = new JSZip();
+  const ext = formatInput.value === 'image/png' ? 'png' : 'jpg';
+  for (const item of items) {
+    if (item.resultBlob) {
+      zip.file('enhanced_' + item.file.name.replace(/\.[^.]+$/, '') + '.' + ext, item.resultBlob);
+    }
+  }
+  const content = await zip.generateAsync({ type: 'blob' });
+  downloadURL(URL.createObjectURL(content), 'enhanced_photos.zip');
+  statusEl.textContent = '✅ ZIP 다운로드 완료!';
+});
+
+function downloadURL(url, filename) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+// ---------- Core image enhancement pipeline ----------
+function loadImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+function analyzeStats(imageData) {
+  const data = imageData.data;
+  let sumLum = 0, sumLum2 = 0, sumSat = 0;
+  const n = data.length / 4;
+  // sample every few pixels for speed on large images
+  const step = n > 300000 ? 8 : (n > 80000 ? 4 : 1);
+  let sampled = 0;
+  for (let p = 0; p < n; p += step) {
+    const i = p * 4;
+    const r = data[i], g = data[i+1], b = data[i+2];
+    const lum = 0.299*r + 0.587*g + 0.114*b;
+    const maxc = Math.max(r,g,b), minc = Math.min(r,g,b);
+    const sat = maxc === 0 ? 0 : (maxc - minc) / 255;
+    sumLum += lum; sumLum2 += lum*lum; sumSat += sat;
+    sampled++;
+  }
+  const meanLum = sumLum / sampled;
+  const variance = Math.max(0, sumLum2 / sampled - meanLum*meanLum);
+  const stdLum = Math.sqrt(variance);
+  const meanSat = sumSat / sampled;
+  return { meanLum, stdLum, meanSat };
+}
+
+function computeAutoParams(stats) {
+  // Target a mid-gray mean around 125-135 without overcorrecting
+  const targetLum = 128;
+  let brightAmt = (targetLum - stats.meanLum) * 0.45;
+  brightAmt = Math.max(-35, Math.min(35, Math.round(brightAmt)));
+
+  // Low std = flat/hazy image -> needs more contrast stretch
+  let contrastAmt = 0.85 - (stats.stdLum / 90);
+  contrastAmt = Math.max(0.25, Math.min(0.85, contrastAmt));
+
+  // Low saturation = dull/washed-out colors -> boost more
+  let satAmt = (0.38 - stats.meanSat) * 1.4;
+  satAmt = Math.max(0.05, Math.min(0.55, satAmt));
+
+  return { brightAmt, contrastAmt, satAmt: Math.round(satAmt * 100) / 100 };
+}
+
+async function enhanceImage(file, opts) {
+  const img = await loadImage(file);
+  const srcW = img.naturalWidth, srcH = img.naturalHeight;
+  const targetW = Math.round(srcW * opts.scale);
+  const targetH = Math.round(srcH * opts.scale);
+
+  let contrastAmt, satAmt, brightAmt;
+  let autoParams = null;
+  if (opts.autoMode) {
+    const probe = document.createElement('canvas');
+    const probeScale = Math.min(1, 400 / Math.max(srcW, srcH));
+    probe.width = Math.max(1, Math.round(srcW * probeScale));
+    probe.height = Math.max(1, Math.round(srcH * probeScale));
+    const pctx = probe.getContext('2d');
+    pctx.drawImage(img, 0, 0, probe.width, probe.height);
+    const stats = analyzeStats(pctx.getImageData(0, 0, probe.width, probe.height));
+    autoParams = computeAutoParams(stats);
+    contrastAmt = autoParams.contrastAmt;
+    satAmt = autoParams.satAmt;
+    brightAmt = autoParams.brightAmt;
+  } else {
+    contrastAmt = opts.manual.contrastAmt;
+    satAmt = opts.manual.satAmt;
+    brightAmt = opts.manual.brightAmt;
+    autoParams = { ...opts.manual };
+  }
+
+  // Step 1: progressive upscale (multi-step halves the artifacts vs one big jump)
+  let curCanvas = document.createElement('canvas');
+  curCanvas.width = srcW; curCanvas.height = srcH;
+  let curCtx = curCanvas.getContext('2d');
+  curCtx.drawImage(img, 0, 0);
+
+  let curW = srcW, curH = srcH;
+  while (curW * 1.5 < targetW || curH * 1.5 < targetH) {
+    const nextW = Math.min(targetW, Math.round(curW * 1.5));
+    const nextH = Math.min(targetH, Math.round(curH * 1.5));
+    const next = document.createElement('canvas');
+    next.width = nextW; next.height = nextH;
+    const nctx = next.getContext('2d');
+    nctx.imageSmoothingEnabled = true;
+    nctx.imageSmoothingQuality = 'high';
+    nctx.drawImage(curCanvas, 0, 0, nextW, nextH);
+    curCanvas = next; curCtx = nctx; curW = nextW; curH = nextH;
+  }
+  if (curW !== targetW || curH !== targetH) {
+    const final = document.createElement('canvas');
+    final.width = targetW; final.height = targetH;
+    const fctx = final.getContext('2d');
+    fctx.imageSmoothingEnabled = true;
+    fctx.imageSmoothingQuality = 'high';
+    fctx.drawImage(curCanvas, 0, 0, targetW, targetH);
+    curCanvas = final; curCtx = fctx;
+  }
+
+  let imageData = curCtx.getImageData(0, 0, targetW, targetH);
+
+  // Step 2: optional light denoise (3x3 box blur, blended with original to stay subtle)
+  if (opts.denoise) {
+    imageData = boxBlurBlend(imageData, targetW, targetH, 0.35);
+  }
+
+  // Step 3: auto levels (contrast stretch) blended by contrastAmt
+  imageData = autoLevels(imageData, contrastAmt);
+
+  // Step 4: brightness / saturation
+  imageData = adjustBrightnessSaturation(imageData, brightAmt, satAmt);
+
+  // Step 5: unsharp mask (sharpen)
+  if (opts.sharpAmt > 0) {
+    imageData = unsharpMask(imageData, targetW, targetH, opts.sharpAmt);
+  }
+
+  curCtx.putImageData(imageData, 0, 0);
+
+  const blob = await new Promise(resolve => {
+    curCanvas.toBlob(resolve, opts.format, 0.95);
+  });
+  return { blob, autoParams };
+}
+
+function clamp(v) { return v < 0 ? 0 : v > 255 ? 255 : v; }
+
+function boxBlurBlend(imageData, w, h, amount) {
+  const src = imageData.data;
+  const out = new Uint8ClampedArray(src.length);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let r=0,g=0,b=0,count=0;
+      for (let dy=-1; dy<=1; dy++) {
+        const ny = y+dy; if (ny<0||ny>=h) continue;
+        for (let dx=-1; dx<=1; dx++) {
+          const nx = x+dx; if (nx<0||nx>=w) continue;
+          const idx = (ny*w+nx)*4;
+          r += src[idx]; g += src[idx+1]; b += src[idx+2]; count++;
+        }
+      }
+      const idx = (y*w+x)*4;
+      const br = r/count, bg = g/count, bb = b/count;
+      out[idx]   = src[idx]   * (1-amount) + br * amount;
+      out[idx+1] = src[idx+1] * (1-amount) + bg * amount;
+      out[idx+2] = src[idx+2] * (1-amount) + bb * amount;
+      out[idx+3] = src[idx+3];
+    }
+  }
+  return new ImageData(out, w, h);
+}
+
+function autoLevels(imageData, amount) {
+  if (amount <= 0) return imageData;
+  const data = imageData.data;
+  let min = 255, max = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    const lum = 0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2];
+    if (lum < min) min = lum;
+    if (lum > max) max = lum;
+  }
+  if (max - min < 10) return imageData;
+  const range = max - min;
+  for (let i = 0; i < data.length; i += 4) {
+    for (let c = 0; c < 3; c++) {
+      const v = data[i+c];
+      const stretched = ((v - min) / range) * 255;
+      data[i+c] = clamp(v * (1-amount) + stretched * amount);
+    }
+  }
+  return imageData;
+}
+
+function adjustBrightnessSaturation(imageData, brightAmt, satAmt) {
+  const data = imageData.data;
+  const satFactor = 1 + satAmt;
+  for (let i = 0; i < data.length; i += 4) {
+    let r = data[i] + brightAmt;
+    let g = data[i+1] + brightAmt;
+    let b = data[i+2] + brightAmt;
+    const gray = 0.299*r + 0.587*g + 0.114*b;
+    r = gray + (r - gray) * satFactor;
+    g = gray + (g - gray) * satFactor;
+    b = gray + (b - gray) * satFactor;
+    data[i] = clamp(r);
+    data[i+1] = clamp(g);
+    data[i+2] = clamp(b);
+  }
+  return imageData;
+}
+
+function unsharpMask(imageData, w, h, amount) {
+  const src = imageData.data;
+  const gray = new Float32Array(w*h);
+  for (let i = 0, p = 0; i < src.length; i += 4, p++) {
+    gray[p] = 0.299*src[i] + 0.587*src[i+1] + 0.114*src[i+2];
+  }
+  const blurred = new Float32Array(w*h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let sum=0, count=0;
+      for (let dy=-1; dy<=1; dy++) {
+        const ny=y+dy; if (ny<0||ny>=h) continue;
+        for (let dx=-1; dx<=1; dx++) {
+          const nx=x+dx; if (nx<0||nx>=w) continue;
+          sum += gray[ny*w+nx]; count++;
+        }
+      }
+      blurred[y*w+x] = sum/count;
+    }
+  }
+  const strength = amount * 1.5;
+  const out = new Uint8ClampedArray(src.length);
+  for (let i = 0, p = 0; i < src.length; i += 4, p++) {
+    const diff = gray[p] - blurred[p];
+    const boost = diff * strength;
+    out[i]   = clamp(src[i]   + boost);
+    out[i+1] = clamp(src[i+1] + boost);
+    out[i+2] = clamp(src[i+2] + boost);
+    out[i+3] = src[i+3];
+  }
+  return new ImageData(out, w, h);
+}
+</script>
+</body>
+</html>
